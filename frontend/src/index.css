@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Design tokens. The accent is hydrogen-alpha red (emission nebulae);
+   teal is oxygen-III, used for "live / ready". */
+@theme {
+  --color-night: #0f1a2e;
+  --color-panel: #172440;
+  --color-line: #2a3a5e;
+  --color-ink: #e8ecf5;
+  --color-muted: #95a3c4;
+  --color-halpha: #f0607e;
+  --color-oiii: #5cc8c0;
+  --color-amber: #e8b04a;
+
+  --font-display: "Newsreader", Georgia, serif;
+  --font-sans: "Public Sans", system-ui, sans-serif;
+}
+
+html {
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-night);
+  /* Two faint nebula glows in the theme colours (hydrogen-alpha pink, oxygen teal).
+     The stars are drawn by components/StarField.tsx. */
+  background-image:
+    radial-gradient(ellipse 60% 45% at 12% 8%, rgb(240 96 126 / 0.13), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 90% 85%, rgb(92 200 192 / 0.10), transparent 70%);
+  background-attachment: fixed;
+  min-height: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-halpha);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Printing (the report page): white paper, no dark background. */
+@media print {
+  html, body { background: white; background-image: none; color: black; }
+  @page { margin: 16mm; }
+}

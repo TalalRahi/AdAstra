@@ -1,0 +1,17 @@
+# secrets
+.env
+.env.local
+
+# python
+__pycache__/
+.venv/
+.pytest_cache/
+
+# node
+node_modules/
+dist/
+
+# downloaded / generated files: keep out of git,
+# EXCEPT the knowledge index, which the deployed backend needs
+backend/artifacts/*
+!backend/artifacts/knowledge/

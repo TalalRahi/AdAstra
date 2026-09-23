@@ -1,0 +1,47 @@
+# One Wikipedia article title per line. Lines starting with # are ignored.
+# Once your 5 class names are final, make sure each has an article here.
+
+# General
+Astronomy
+Astronomical object
+Telescope
+Hubble Space Telescope
+James Webb Space Telescope
+Electromagnetic spectrum
+Redshift
+Light-year
+
+# Galaxies
+Galaxy
+Milky Way
+Spiral galaxy
+Elliptical galaxy
+Irregular galaxy
+Hubble sequence
+Andromeda Galaxy
+
+# Stars
+Star
+Stellar evolution
+Star formation
+Main sequence
+Stellar classification
+Star cluster
+Supernova
+
+# Nebulae
+Nebula
+Emission nebula
+Reflection nebula
+Planetary nebula
+Dark nebula
+Supernova remnant
+
+# Planets and the Solar System
+Planet
+Solar System
+Exoplanet
+Moon
+Lunar phase
+Comet
+Asteroid

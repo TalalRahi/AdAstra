@@ -1,0 +1,1 @@
+"""Knowledge retrieval: chunking, embeddings, and the FAISS search index."""

@@ -1,0 +1,11 @@
+# Runtime packages only: this is what Vercel installs (500 MB limit).
+fastapi==0.115.12
+python-multipart==0.0.20
+pillow==11.2.1
+numpy==2.2.5
+python-dotenv==1.1.0
+fastembed==0.8.1
+faiss-cpu==1.15.1
+langchain-core==1.6.4
+langchain-google-genai==4.4.0
+tenacity==9.1.4
