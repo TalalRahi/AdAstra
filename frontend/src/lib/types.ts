@@ -81,3 +81,12 @@ export interface ChatResponse {
   warnings: string[]
   latency_ms: number
 }
+
+export interface Profile {
+  uid: string
+  email: string | null
+  email_verified: boolean
+  name: string
+  email_updates: { opted_in: boolean; updated_at: string }
+  created_at: string
+}

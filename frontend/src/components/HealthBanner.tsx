@@ -6,6 +6,8 @@ const NAMES: Record<string, string> = {
   classifier: 'Classifier',
   knowledge_base: 'Knowledge base',
   llm: 'Explanations (Gemma)',
+  accounts: 'Accounts',
+  database: 'Database',
 }
 
 export default function HealthBanner() {
@@ -36,7 +38,7 @@ export default function HealthBanner() {
           ? 'All components are running with real models.'
           : 'Running in demo mode. Results are placeholders until the missing parts are added.'}
       </p>
-      <ul className="mt-2 space-y-1 text-muted">
+      <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-muted">
         {slots.map(([key, slot]) => (
           <li key={key} title={slot.detail} className="flex items-center gap-2">
             <span

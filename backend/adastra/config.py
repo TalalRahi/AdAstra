@@ -74,6 +74,12 @@ class Settings:
     llm_temperature_explain: float = float(os.getenv("LLM_TEMPERATURE_EXPLAIN", "0.3"))
     llm_temperature_chat: float = float(os.getenv("LLM_TEMPERATURE_CHAT", "0.2"))
 
+    # Accounts (Firebase Authentication) and database (MongoDB Atlas).
+    # Empty values = feature switched off; the rest of the site still works.
+    firebase_project_id: str = os.getenv("FIREBASE_PROJECT_ID", "")
+    mongodb_uri: str = os.getenv("MONGODB_URI", "")
+    mongodb_db: str = os.getenv("MONGODB_DB", "adastra")
+
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
 

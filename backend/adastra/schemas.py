@@ -1,5 +1,6 @@
-"""Request/response shapes. The frontend's types.ts mirrors these."""
+"""Request/response shapes. The frontend's src/lib/types.ts mirrors these."""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -114,3 +115,23 @@ class ChatResponse(BaseModel):
     sources: list[Source]
     warnings: list[str]
     latency_ms: float
+
+
+# ---------------------------------------------------------------- accounts
+class EmailUpdates(BaseModel):
+    opted_in: bool
+    updated_at: datetime  # when the user made this choice
+
+
+class Profile(BaseModel):
+    uid: str
+    email: str | None
+    email_verified: bool
+    name: str
+    email_updates: EmailUpdates
+    created_at: datetime
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    email_updates: bool

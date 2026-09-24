@@ -4,11 +4,13 @@ import logging
 import time
 import uuid
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from adastra import __version__, pipeline
+from adastra import __version__, db, pipeline
+from adastra.auth import AuthUser, auth_enabled, current_user, signed_in_if_enabled
 from adastra.classify import get_model
 from adastra.config import settings
 from adastra.imaging import ImageError
@@ -22,6 +24,8 @@ from adastra.schemas import (
     ExplainResponse,
     HealthResponse,
     Level,
+    Profile,
+    ProfileUpdate,
     SlotStatus,
 )
 
@@ -36,40 +40,47 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
-# Allow the React app (a different port = a different "origin") to call this API.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
 
 def _error(status: int, code: str, message: str, request_id: str) -> JSONResponse:
-    """Every error uses the same JSON shape so the frontend can always show it."""
     return JSONResponse(
         status_code=status,
         content={"error": {"code": code, "message": message, "request_id": request_id}},
     )
 
 
+HTTP_CODES = {401: "not_signed_in", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 503: "unavailable"}
+
+
+@app.exception_handler(StarletteHTTPException)
+def http_error(request: Request, exc: StarletteHTTPException):
+    """Errors raised on purpose (e.g. "please sign in") use the same JSON shape."""
+    request_id = uuid.uuid4().hex[:12]
+    return _error(exc.status_code, HTTP_CODES.get(exc.status_code, f"http_{exc.status_code}"),
+                  str(exc.detail), request_id)
+
+
 @app.exception_handler(Exception)
 def unhandled(request: Request, exc: Exception):
-    """Unexpected crashes also return JSON instead of a blank 500 page."""
     request_id = uuid.uuid4().hex[:12]
     log.exception("unhandled error request_id=%s", request_id)
     return _error(500, "internal_error", "Something went wrong on the server.", request_id)
 
 
 # NOTE: handlers are plain `def`, not `async def`. FastAPI runs plain-def
-# handlers in a thread pool, so a slow classification never blocks other requests.
+# handlers in a thread pool, so a slow classification never blocks other
+# requests (this was bug #1 in the old codebase).
 
 
 @app.get("/api/health", response_model=HealthResponse)
 def health():
-    """Tells the frontend which parts are real and which are placeholders."""
     model = get_model()
-    kb_ready = store.exists()  # True when index.faiss, docstore.jsonl and manifest.json exist
     return HealthResponse(
         ok=True,
         version=__version__,
@@ -82,9 +93,19 @@ def health():
                 else "No model file yet — using demo output.",
             ),
             "knowledge_base": SlotStatus(
-                status="live" if kb_ready else "missing",
-                detail="Search index found." if kb_ready
+                status="live" if store.exists() else "missing",
+                detail="Search index found." if store.exists()
                 else "No index yet — run: python -m scripts.ingest --wikipedia --pdfs",
+            ),
+            "accounts": SlotStatus(
+                status="live" if auth_enabled() else "missing",
+                detail="Firebase Authentication" if auth_enabled()
+                else "No FIREBASE_PROJECT_ID set — sign-in is switched off.",
+            ),
+            "database": SlotStatus(
+                status="live" if db.ping() else "missing",
+                detail="MongoDB Atlas connected" if db.db_enabled()
+                else "No MONGODB_URI set — accounts can't be saved.",
             ),
             "llm": SlotStatus(
                 status="live" if key_present() else "missing",
@@ -95,17 +116,20 @@ def health():
     )
 
 
-@app.post("/api/classify", response_model=ClassifyResponse)
+# The three main features need a signed-in user (when accounts are switched on).
+signed_in = Depends(signed_in_if_enabled)
+
+
+@app.post("/api/classify", response_model=ClassifyResponse, dependencies=[signed_in])
 def classify(file: UploadFile = File(...), level: Level = Form("beginner")):
     request_id = uuid.uuid4().hex[:12]
-    # Read one byte past the limit, so an oversized file is detected
-    # without loading the whole thing into memory.
+    # Read one byte past the limit so oversized files are detected without
+    # loading an arbitrarily large body into memory.
     data = file.file.read(settings.max_upload_bytes + 1)
     try:
         result = pipeline.run(data, level, request_id)
     except ImageError as e:
         return _error(e.status, e.code, e.message, request_id)
-
     log.info(
         "classify request_id=%s class=%s conf=%.3f mode=%s",
         request_id, result.classification.predicted_class,
@@ -114,7 +138,7 @@ def classify(file: UploadFile = File(...), level: Level = Form("beginner")):
     return result
 
 
-@app.post("/api/explain", response_model=ExplainResponse)
+@app.post("/api/explain", response_model=ExplainResponse, dependencies=[signed_in])
 def explain(req: ExplainRequest):
     """Explain an earlier result at another level. The browser sends the
     classification back, so the server needs no memory of past requests."""
@@ -122,7 +146,7 @@ def explain(req: ExplainRequest):
     return ExplainResponse(explanation=explanation, sources=sources, warnings=warnings)
 
 
-@app.post("/api/rag-query", response_model=ChatResponse)
+@app.post("/api/rag-query", response_model=ChatResponse, dependencies=[signed_in])
 def rag_query(req: ChatRequest):
     """The "Ask" page: answer a question from the knowledge base, with sources."""
     start = time.perf_counter()
@@ -131,3 +155,43 @@ def rag_query(req: ChatRequest):
     )
     latency = round((time.perf_counter() - start) * 1000, 1)
     return ChatResponse(answer=answer, sources=sources, warnings=warnings, latency_ms=latency)
+
+
+# ---------------------------------------------------------------- accounts
+def _require_db():
+    if not db.db_enabled():
+        raise HTTPException(503, detail="The database is not set up on this server.")
+
+
+def _profile(doc: dict, user: AuthUser) -> Profile:
+    return Profile(
+        uid=user.uid,
+        email=user.email,
+        email_verified=user.email_verified,
+        name=doc["name"],
+        email_updates=doc["email_updates"],
+        created_at=doc["created_at"],
+    )
+
+
+@app.get("/api/me", response_model=Profile)
+def get_me(user: AuthUser = Depends(current_user)):
+    """The signed-in user's profile (created on first visit if missing)."""
+    _require_db()
+    return _profile(db.touch_user(user.uid, user.email, user.name), user)
+
+
+@app.post("/api/me", response_model=Profile)
+def save_me(update: ProfileUpdate, user: AuthUser = Depends(current_user)):
+    """Save the name and the email-updates choice (called right after sign-up)."""
+    _require_db()
+    return _profile(db.save_user(user.uid, user.email, update.name.strip(), update.email_updates), user)
+
+
+@app.delete("/api/me")
+def delete_me(user: AuthUser = Depends(current_user)):
+    """Delete everything AdAstra stores about this user. (The browser then
+    deletes the Firebase account itself.)"""
+    _require_db()
+    db.delete_user(user.uid)
+    return {"deleted": True}

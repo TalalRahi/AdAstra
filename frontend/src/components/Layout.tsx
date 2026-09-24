@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from 'react-router'
+import { useAuth } from '../lib/auth'
 import StarField from './StarField'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   `text-sm ${isActive ? 'text-ink underline decoration-halpha decoration-2 underline-offset-8' : 'text-muted hover:text-ink'}`
 
 export default function Layout() {
+  const { enabled, user, profile } = useAuth()
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-5 sm:px-8 print:max-w-none print:px-0">
       <StarField />
@@ -19,6 +21,11 @@ export default function Layout() {
           <NavLink to="/chat" className={link}>Ask</NavLink>
           <NavLink to="/history" className={link}>History</NavLink>
           <NavLink to="/moon" className={link}>Moon</NavLink>
+          {enabled && user && (
+            <NavLink to="/account" className={link}>
+              {profile?.name ?? user.displayName ?? 'Account'}
+            </NavLink>
+          )}
         </nav>
       </header>
       <main className="flex-1 pb-16 print:pb-0">
