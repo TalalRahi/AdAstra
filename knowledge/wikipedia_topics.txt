@@ -127,3 +127,23 @@ Space telescope
 # Planets around other stars
 Methods of detecting exoplanets
 Habitable zone
+
+# Sky tab: moons, meteor showers, comets, constellations, nebulae, stars
+Triton (moon)
+Perseids
+Geminids
+Leonids
+Orionids
+Quadrantids
+Halley's Comet
+Comet Swift–Tuttle
+55P/Tempel–Tuttle
+Orion (constellation)
+Ursa Major
+Cassiopeia (constellation)
+Scorpius
+Crux (constellation)
+Helix Nebula
+Ring Nebula
+Rigel
+Proxima Centauri

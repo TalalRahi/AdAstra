@@ -14,7 +14,6 @@ function makeRandom(seed: number) {
   }
 }
 
-/** Shared gradients, rendered once on the page. */
 export function CelestialDefs() {
   return (
     <svg width="0" height="0" aria-hidden="true" className="absolute">
@@ -37,6 +36,9 @@ export function CelestialDefs() {
           <stop offset="100%" stopColor="#ffd9a0" stopOpacity="0" />
         </radialGradient>
         <clipPath id="clip-planet"><circle cx="50" cy="50" r="46" /></clipPath>
+        <filter id="neb-blur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.4" />
+        </filter>
       </defs>
     </svg>
   )
@@ -250,6 +252,287 @@ export function GalaxyArt({ id, size }: { id: string; size: number }) {
         <circle cx="50" cy="50" r={shape.bar ? 10 : 12} fill="url(#galaxy-core)" />
       </g>
       {shape.companion && <circle cx="80" cy="22" r="6" fill="url(#galaxy-core)" />}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------- moons
+// Spheres like the planets, with each moon's real surface character.
+export function MoonArt({ id, size }: { id: string; size: number }) {
+  let body: React.ReactNode
+  switch (id) {
+    case 'europa':
+      body = (
+        <>
+          <rect width="100" height="100" fill="#e7dfce" />
+          <path d="M10 20 Q 40 35 30 60 T 60 90" stroke="#b7ab8e" strokeWidth="2" fill="none" opacity="0.7" />
+          <path d="M85 15 Q 55 40 70 65 T 40 95" stroke="#c9bd9e" strokeWidth="1.6" fill="none" opacity="0.6" />
+          <path d="M5 60 Q 35 55 55 68" stroke="#b7ab8e" strokeWidth="1.4" fill="none" opacity="0.5" />
+        </>
+      )
+      break
+    case 'titan':
+      body = (
+        <>
+          <rect width="100" height="100" fill="#e0a24a" />
+          <ellipse cx="50" cy="50" rx="50" ry="50" fill="#f0bf6f" opacity="0.35" />
+          <ellipse cx="35" cy="60" rx="18" ry="8" fill="#c47f2e" opacity="0.4" />
+        </>
+      )
+      break
+    case 'io':
+      body = (
+        <>
+          <rect width="100" height="100" fill="#e8d24a" />
+          <circle cx="30" cy="35" r="7" fill="#c25a2a" />
+          <circle cx="62" cy="55" r="10" fill="#d97a30" />
+          <circle cx="45" cy="72" r="5" fill="#b8471f" />
+          <circle cx="70" cy="25" r="4" fill="#e0912f" />
+        </>
+      )
+      break
+    case 'enceladus':
+      body = (
+        <>
+          <rect width="100" height="100" fill="#f2f6f8" />
+          <path d="M20 70 Q 35 60 50 68 Q 65 76 80 66" stroke="#c9dbe0" strokeWidth="2" fill="none" opacity="0.6" />
+        </>
+      )
+      break
+    case 'triton':
+      body = (
+        <>
+          <rect width="100" height="100" fill="#e9c8c2" />
+          <ellipse cx="50" cy="12" rx="34" ry="12" fill="#f7ece9" />
+          <path d="M15 55 Q 40 50 60 58 T 95 55" stroke="#d3a8a0" strokeWidth="1.6" fill="none" opacity="0.5" />
+        </>
+      )
+      break
+    default:
+      body = <rect width="100" height="100" fill="#999" />
+  }
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+      <Sphere>{body}</Sphere>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------- meteor showers
+// Streaks radiating out from one point (the "radiant"), as a shower looks in the sky.
+export function ShowerArt({ seed, size }: { seed: number; size: number }) {
+  const random = makeRandom(seed)
+  const streaks = Array.from({ length: 14 }, () => {
+    const angle = random() * Math.PI * 2
+    const len = 30 + random() * 40
+    const start = 6 + random() * 6
+    return {
+      x1: 50 + Math.cos(angle) * start, y1: 50 + Math.sin(angle) * start,
+      x2: 50 + Math.cos(angle) * (start + len), y2: 50 + Math.sin(angle) * (start + len),
+      o: 0.4 + random() * 0.5, w: 0.6 + random() * 0.9,
+    }
+  })
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+      {Array.from({ length: 60 }, (_, i) => {
+        const rand2 = makeRandom(seed + 900 + i)
+        return <circle key={i} cx={rand2() * 100} cy={rand2() * 100} r={rand2() * 0.6} fill="#fff" opacity={rand2() * 0.5} />
+      })}
+      {streaks.map((s, i) => (
+        <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="#fff7d6" strokeWidth={s.w} strokeLinecap="round" opacity={s.o} />
+      ))}
+      <circle cx="50" cy="50" r="3.5" fill="#fff" opacity="0.9" />
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------- comets
+export function CometArt({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+      <path d="M50 50 L 15 22" stroke="#cfe0ff" strokeWidth="10" strokeLinecap="round" opacity="0.18" />
+      <path d="M50 50 L 15 22" stroke="#e8f2ff" strokeWidth="4" strokeLinecap="round" opacity="0.35" />
+      <circle cx="50" cy="50" r="8" fill="#eaf3ff" />
+      <circle cx="50" cy="50" r="8" fill="url(#sun-glow)" opacity="0.7" />
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------- constellations
+// Simplified stick figures: stars placed to resemble each pattern, joined by lines.
+// (Illustrative, not a precise star chart.)
+const CONSTELLATION_STARS: Record<string, { pts: [number, number, number][]; lines: [number, number][] }> = {
+  orion: {
+    pts: [[30, 10, 2.6], [70, 12, 3], [50, 35, 1.4], [42, 50, 1.6], [50, 52, 1.6], [58, 50, 1.6], [25, 75, 2], [75, 78, 1.8]],
+    lines: [[0, 3], [3, 4], [4, 5], [5, 1], [0, 2], [1, 2], [2, 6], [2, 7]],
+  },
+  'ursa-major': {
+    pts: [[10, 60, 2], [28, 55, 1.8], [46, 58, 1.8], [62, 50, 2.2], [66, 30, 1.6], [82, 25, 1.6], [92, 35, 2]],
+    lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]],
+  },
+  cassiopeia: {
+    pts: [[10, 60, 1.8], [30, 30, 2], [50, 55, 2.2], [70, 25, 1.8], [90, 50, 1.8]],
+    lines: [[0, 1], [1, 2], [2, 3], [3, 4]],
+  },
+  scorpius: {
+    pts: [[10, 20, 1.6], [22, 30, 1.6], [34, 38, 2.6], [46, 48, 1.6], [56, 58, 1.6], [64, 70, 1.6], [70, 82, 1.6], [78, 88, 1.8]],
+    lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7]],
+  },
+  'southern-cross': {
+    pts: [[50, 8, 2.4], [50, 88, 2], [15, 48, 1.8], [85, 48, 1.6]],
+    lines: [[0, 1], [2, 3]],
+  },
+}
+
+export function ConstellationArt({ id, size }: { id: string; size: number }) {
+  const shape = CONSTELLATION_STARS[id]
+  if (!shape) return null
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+      {Array.from({ length: 40 }, (_, i) => {
+        const r = makeRandom(id.length * 97 + i)
+        return <circle key={i} cx={r() * 100} cy={r() * 100} r={r() * 0.5} fill="#fff" opacity={r() * 0.3} />
+      })}
+      {shape.lines.map(([a, b], i) => (
+        <line
+          key={i}
+          x1={shape.pts[a][0]} y1={shape.pts[a][1]} x2={shape.pts[b][0]} y2={shape.pts[b][1]}
+          stroke="#95a3c4" strokeWidth="0.8" opacity="0.55"
+        />
+      ))}
+      {shape.pts.map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#fff" />
+      ))}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------- nebulae
+// Each nebula gets a drawing style closer to how it actually looks, not just
+// a plain glowing ball: wispy overlapping clouds, a filament web for a
+// supernova remnant, dark dust pillars for the Eagle, and a true ring shape
+// for the two planetary nebulae (Helix, Ring), which really do look like rings.
+const NEBULA_COLOR: Record<string, { c1: string; c2: string; c3: string }> = {
+  'orion-nebula': { c1: '#f0607e', c2: '#8a5cff', c3: '#ffb37a' },
+  'crab-nebula': { c1: '#5cc8c0', c2: '#f0607e', c3: '#8a5cff' },
+  'eagle-nebula': { c1: '#e0a24a', c2: '#c9793a', c3: '#5cc8c0' },
+  'helix-nebula': { c1: '#5cc8c0', c2: '#8a5cff', c3: '#3a6ea5' },
+  'ring-nebula': { c1: '#8a5cff', c2: '#5cc8c0', c3: '#f0607e' },
+}
+
+/** A handful of soft, overlapping glowing blobs — the base "gas cloud" look. */
+function cloudBlobs(id: string, colors: string[]) {
+  const random = makeRandom(id.length * 131)
+  return Array.from({ length: 6 }, (_, i) => {
+    const color = colors[i % colors.length]
+    const cx = 30 + random() * 40
+    const cy = 30 + random() * 40
+    const rx = 18 + random() * 20
+    const ry = 14 + random() * 18
+    const rot = random() * 180
+    return (
+      <ellipse
+        key={i} cx={cx} cy={cy} rx={rx} ry={ry} fill={color}
+        opacity={0.22 + random() * 0.2} transform={`rotate(${rot} ${cx} ${cy})`}
+        filter="url(#neb-blur)"
+      />
+    )
+  })
+}
+
+function scatteredStars(id: string, count = 45) {
+  const random = makeRandom(id.length * 271)
+  return Array.from({ length: count }, (_, i) => (
+    <circle key={i} cx={random() * 100} cy={random() * 100} r={random() * 0.6} fill="#fff" opacity={random() * 0.6} />
+  ))
+}
+
+export function NebulaArt({ id, size }: { id: string; size: number }) {
+  const col = NEBULA_COLOR[id] ?? { c1: '#f0607e', c2: '#5cc8c0', c3: '#8a5cff' }
+
+  // Planetary nebulae (Helix, Ring) really do appear as a glowing ring / "eye".
+  if (id === 'helix-nebula' || id === 'ring-nebula') {
+    return (
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+        {cloudBlobs(id, [col.c1, col.c2])}
+        <circle cx="50" cy="50" r="30" fill="none" stroke={col.c1} strokeWidth="14" opacity="0.55" filter="url(#neb-blur)" />
+        <circle cx="50" cy="50" r="30" fill="none" stroke={col.c2} strokeWidth="6" opacity="0.7" />
+        <circle cx="50" cy="50" r="12" fill={col.c3} opacity="0.3" filter="url(#neb-blur)" />
+        <circle cx="50" cy="50" r="3" fill="#fff" opacity="0.9" />
+        {scatteredStars(id, 30)}
+      </svg>
+    )
+  }
+
+  // Crab Nebula: the tangled filaments of an exploded star, not a smooth cloud.
+  if (id === 'crab-nebula') {
+    const random = makeRandom(11)
+    const filaments = Array.from({ length: 16 }, (_, i) => {
+      const angle = (i / 16) * Math.PI * 2 + random() * 0.3
+      const len = 22 + random() * 20
+      const bend = (random() - 0.5) * 20
+      const x2 = 50 + Math.cos(angle) * len, y2 = 50 + Math.sin(angle) * len
+      const mx = 50 + Math.cos(angle) * len * 0.5 - Math.sin(angle) * bend
+      const my = 50 + Math.sin(angle) * len * 0.5 + Math.cos(angle) * bend
+      return <path key={i} d={`M50 50 Q ${mx} ${my} ${x2} ${y2}`} stroke={i % 2 ? col.c1 : col.c2} strokeWidth="2" fill="none" opacity="0.85" strokeLinecap="round" />
+    })
+    return (
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+        {cloudBlobs(id, [col.c1, col.c2])}
+        {filaments}
+        <circle cx="50" cy="50" r="3" fill="#fff" opacity="0.9" />
+        {scatteredStars(id, 30)}
+      </svg>
+    )
+  }
+
+  // Eagle Nebula: dark dust "pillars" silhouetted against the glow, its most famous feature.
+  if (id === 'eagle-nebula') {
+    return (
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+        {cloudBlobs(id, [col.c1, col.c2, col.c3])}
+        <path d="M38 78 L43 32 L49 33 L47 78 Z" fill="#150c22" opacity="0.9" />
+        <path d="M50 80 L55 38 L60 39 L57 80 Z" fill="#150c22" opacity="0.85" />
+        <path d="M33 80 L37 48 L42 49 L40 80 Z" fill="#150c22" opacity="0.8" />
+        {scatteredStars(id, 35)}
+      </svg>
+    )
+  }
+
+  // Orion Nebula (default style): a bright, wispy star-forming cloud.
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+      {cloudBlobs(id, [col.c1, col.c2, col.c3])}
+      <circle cx="50" cy="50" r="6" fill="#fff" opacity="0.85" filter="url(#neb-blur)" />
+      <circle cx="50" cy="50" r="2.2" fill="#fff" />
+      {scatteredStars(id, 40)}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------- stars
+// A glowing disc, coloured by temperature and sized by the star's real class.
+const STAR_LOOK: Record<string, { color: string; radius: number }> = {
+  sirius: { color: '#eaf2ff', radius: 20 },
+  betelgeuse: { color: '#ff7a4a', radius: 34 },
+  'proxima-centauri': { color: '#ff8f6b', radius: 12 },
+  rigel: { color: '#9dc4ff', radius: 30 },
+  polaris: { color: '#fff3d6', radius: 22 },
+}
+
+export function StarArt({ id, size }: { id: string; size: number }) {
+  const look = STAR_LOOK[id] ?? { color: '#fff', radius: 20 }
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
+      <defs>
+        <radialGradient id={`star-${id}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#fff" />
+          <stop offset="35%" stopColor={look.color} />
+          <stop offset="100%" stopColor={look.color} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill={`url(#star-${id})`} />
+      <circle cx="50" cy="50" r={look.radius} fill={look.color} />
     </svg>
   )
 }
