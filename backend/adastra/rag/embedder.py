@@ -15,6 +15,12 @@ from ..config import settings
 _model = None
 _lock = threading.Lock()
 
+# Memory-friendly settings: the texts are embedded in portions of PORTION,
+# and the model reads BATCH texts at a time. Smaller numbers = less RAM needed
+# at once (important on an 8 GB laptop); the results are exactly the same.
+PORTION = 256
+BATCH = 8
+
 
 def get_model():
     """Load the embedding model once (downloads ~90 MB the first time)."""
@@ -35,6 +41,18 @@ def normalise(vectors: np.ndarray) -> np.ndarray:
 
 
 def embed(texts: list[str]) -> np.ndarray:
-    """Return an array of shape (len(texts), 384), normalised."""
-    vectors = np.array(list(get_model().embed(texts, batch_size=32)), dtype="float32")
-    return normalise(vectors)
+    """Return an array of shape (len(texts), 384), normalised.
+
+    Big jobs (building the index) print their progress; single questions don't.
+    """
+    model = get_model()
+    show_progress = len(texts) > PORTION
+    parts = []
+    for start in range(0, len(texts), PORTION):
+        portion = texts[start:start + PORTION]
+        parts.append(np.array(list(model.embed(portion, batch_size=BATCH)), dtype="float32"))
+        if show_progress:
+            print(f"  embedded {min(start + PORTION, len(texts))} / {len(texts)} passages")
+    if not parts:
+        return np.zeros((0, 384), dtype="float32")
+    return normalise(np.vstack(parts))

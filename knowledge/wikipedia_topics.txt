@@ -60,3 +60,70 @@ Neptune
 # More galaxies (Sky tab); Milky Way and Andromeda Galaxy are listed above
 Triangulum Galaxy
 Whirlpool Galaxy
+
+# ---------------- Expanded collection ----------------
+
+# Stars and what they become
+Black hole
+Neutron star
+White dwarf
+Red giant
+Pulsar
+Variable star
+Binary star
+Sirius
+Betelgeuse
+Polaris
+
+# The universe as a whole (cosmology)
+Big Bang
+Cosmic microwave background
+Dark matter
+Dark energy
+Expansion of the universe
+Observable universe
+
+# Small bodies of the Solar System
+Pluto
+Dwarf planet
+Asteroid belt
+Kuiper belt
+Oort cloud
+Meteoroid
+Meteor shower
+
+# Famous moons
+Titan (moon)
+Europa (moon)
+Io (moon)
+Ganymede (moon)
+Enceladus
+
+# Famous nebulae and star clusters
+Orion Nebula
+Crab Nebula
+Eagle Nebula
+Pleiades
+Globular cluster
+Open cluster
+
+# Beyond our galaxy
+Large Magellanic Cloud
+Local Group
+Galaxy cluster
+Quasar
+Active galactic nucleus
+Sombrero Galaxy
+
+# Observing the sky
+Constellation
+Solar eclipse
+Lunar eclipse
+Aurora
+Light pollution
+Radio telescope
+Space telescope
+
+# Planets around other stars
+Methods of detecting exoplanets
+Habitable zone
