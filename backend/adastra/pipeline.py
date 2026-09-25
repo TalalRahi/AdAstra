@@ -4,7 +4,8 @@ import time
 import uuid
 
 from .classify import build_classification, get_model, softmax
-from .imaging import load_image, to_model_input
+from .imaging import load_image
+from .morphology import classify_morphology
 from .rag import explain_chain
 from .schemas import ClassifyResponse, ImageInfo, Level
 
@@ -23,18 +24,21 @@ def run(data: bytes, level: Level, request_id: str | None = None) -> ClassifyRes
 
     # Steps 2-3: check the upload, make model input (raises ImageError on bad input)
     loaded = timed("decode", load_image, data)
-    model_input = timed("preprocess", to_model_input, loaded.image)
+    model = get_model()
+    model_input = timed("preprocess", model.preprocessed, loaded.image)
 
     # Step 4: classify
-    model = get_model()
     logits = timed("classify", model.predict_logits, model_input, loaded.sha256)
     classification = build_classification(model, softmax(logits))
     if not model.weights_loaded:
         warnings.append("No trained model is loaded; classification is demo output.")
 
+    # Conditional second stage: only actually runs for a confident "galaxy" prediction
+    morphology = timed("morphology", classify_morphology, loaded.image, loaded.sha256, classification)
+
     # Steps 5-8: retrieve passages + Gemma explanation (falls back to placeholder text)
     explanation, sources, explain_warnings = timed(
-        "explain", explain_chain.explain, classification, level
+        "explain", explain_chain.explain, classification, level, morphology
     )
     warnings += explain_warnings
 
@@ -50,6 +54,7 @@ def run(data: bytes, level: Level, request_id: str | None = None) -> ClassifyRes
             sha256=loaded.sha256,
         ),
         classification=classification,
+        galaxy_morphology=morphology,
         explanation=explanation,
         sources=sources,
         timings_ms=timings,

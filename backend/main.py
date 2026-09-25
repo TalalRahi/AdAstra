@@ -13,6 +13,7 @@ from adastra import __version__, db, pipeline
 from adastra.auth import AuthUser, auth_enabled, current_user, signed_in_if_enabled
 from adastra.classify import get_model
 from adastra.config import settings
+from adastra.morphology import get_model as get_morphology_model
 from adastra.imaging import ImageError
 from adastra.rag import chat_chain, explain_chain, store
 from adastra.rag.llm import key_present
@@ -81,16 +82,22 @@ def unhandled(request: Request, exc: Exception):
 @app.get("/api/health", response_model=HealthResponse)
 def health():
     model = get_model()
+    morphology_model = get_morphology_model()
     return HealthResponse(
         ok=True,
         version=__version__,
         demo_mode=settings.demo_mode,
-        classes=settings.class_names,
+        classes=model.classes if model.weights_loaded else settings.class_names,
         slots={
             "classifier": SlotStatus(
                 status="live" if model.weights_loaded else "missing",
-                detail="EfficientNet-B0 ONNX model" if model.weights_loaded
+                detail=model.architecture if model.weights_loaded
                 else "No model file yet — using demo output.",
+            ),
+            "galaxy_morphology": SlotStatus(
+                status="live" if morphology_model.weights_loaded else "missing",
+                detail=morphology_model.architecture if morphology_model.weights_loaded
+                else "No model file yet — galaxy shape uses demo output when triggered.",
             ),
             "knowledge_base": SlotStatus(
                 status="live" if store.exists() else "missing",
@@ -142,7 +149,9 @@ def classify(file: UploadFile = File(...), level: Level = Form("beginner")):
 def explain(req: ExplainRequest):
     """Explain an earlier result at another level. The browser sends the
     classification back, so the server needs no memory of past requests."""
-    explanation, sources, warnings = explain_chain.explain(req.classification, req.level)
+    explanation, sources, warnings = explain_chain.explain(
+        req.classification, req.level, req.galaxy_morphology
+    )
     return ExplainResponse(explanation=explanation, sources=sources, warnings=warnings)
 
 

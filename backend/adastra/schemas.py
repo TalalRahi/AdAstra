@@ -53,11 +53,27 @@ class ImageInfo(BaseModel):
     sha256: str
 
 
+class GalaxyMorphology(BaseModel):
+    """The conditional second stage: only runs when the main classifier's top
+    prediction is "galaxy". `enabled=false` means the module or model isn't
+    switched on at all; `enabled=true, predicted_class=None` means it was on
+    but didn't run for THIS image (not a galaxy, or confidence too low)."""
+
+    enabled: bool
+    ran: bool = False
+    predicted_class: str | None = None
+    confidence: float | None = None
+    probabilities: list[ClassProbability] | None = None
+    model: ModelInfo | None = None
+    reason: str | None = None  # why it didn't run, when ran=false
+
+
 class ClassifyResponse(BaseModel):
     mode: Mode
     request_id: str
     image: ImageInfo
     classification: Classification
+    galaxy_morphology: GalaxyMorphology
     explanation: Explanation
     sources: list[Source]
     timings_ms: dict[str, float]
@@ -81,6 +97,7 @@ class ExplainRequest(BaseModel):
     """Re-explain an earlier result at another level, without re-uploading the image."""
 
     classification: Classification
+    galaxy_morphology: GalaxyMorphology | None = None
     level: Level
 
 

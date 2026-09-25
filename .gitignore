@@ -15,3 +15,5 @@ dist/
 # EXCEPT the knowledge index, which the deployed backend needs
 backend/artifacts/*
 !backend/artifacts/knowledge/
+!backend/artifacts/classifier/
+!backend/artifacts/galaxy_morphology/

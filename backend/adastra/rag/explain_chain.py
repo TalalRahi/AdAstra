@@ -16,7 +16,7 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 
 from .. import demo
 from ..config import settings
-from ..schemas import Classification, Explanation, Level, Source
+from ..schemas import Classification, Explanation, GalaxyMorphology, Level, Source
 from .citations import check_citations, format_numbered, to_sources
 from .llm import LLMError, get_llm, invoke_with_retry, key_present, to_text
 from .retriever import KnowledgeRetriever, get_knowledge_base
@@ -39,6 +39,7 @@ CLASSIFIER RESULT
 - Predicted class: {predicted_class}
 - Confidence: {confidence}
 - {uncertainty}
+- {morphology}
 
 NUMBERED PASSAGES (your only source of facts)
 {passages}
@@ -69,6 +70,13 @@ def uncertainty_line(c: Classification) -> str:
     return "The classifier is fairly confident; do not discuss other classes."
 
 
+def morphology_line(m: GalaxyMorphology | None) -> str:
+    if m is None or not m.ran or m.predicted_class is None:
+        return "Morphology: not applicable — do not discuss galaxy shape/morphology."
+    return (f"A second model measured this galaxy's shape as {m.predicted_class} "
+            f"({m.confidence:.0%} confident). Mention this briefly.")
+
+
 def build_chain(retriever, llm):
     """The LCEL chain. Each .assign adds one key to the dict flowing through."""
     return (
@@ -78,7 +86,9 @@ def build_chain(retriever, llm):
     )
 
 
-def explain(c: Classification, level: Level, kb=None, llm=None) -> tuple[Explanation, list[Source], list[str]]:
+def explain(
+    c: Classification, level: Level, morphology: GalaxyMorphology | None = None, kb=None, llm=None
+) -> tuple[Explanation, list[Source], list[str]]:
     """Return (explanation, sources, warnings). Never raises for Gemma problems."""
     if llm is None and not key_present():
         exp, sources = demo.explanation(c, level)
@@ -99,6 +109,7 @@ def explain(c: Classification, level: Level, kb=None, llm=None) -> tuple[Explana
         "predicted_class": c.predicted_class,
         "confidence": f"{c.confidence:.0%}",
         "uncertainty": uncertainty_line(c),
+        "morphology": morphology_line(morphology),
     }
     try:
         result = invoke_with_retry(build_chain(KnowledgeRetriever(kb=kb), llm), inputs)

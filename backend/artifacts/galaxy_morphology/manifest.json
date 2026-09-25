@@ -1,0 +1,74 @@
+{
+  "slot": "galaxy_morphology",
+  "version": "1.0.0",
+  "architecture": "EfficientNet-B0",
+  "architecture_source": "torchvision",
+  "dataset": "Galaxy Zoo",
+  "format": "onnx",
+  "file": "model.onnx",
+  "sha256": "868b06f498d58e4453b64489e73dbf849206f8c3c00cf8084a4b419256d489cb",
+  "input": {
+    "layout": "NCHW",
+    "channels": "RGB",
+    "dtype": "float32",
+    "resize_to": [
+      256,
+      256
+    ],
+    "center_crop": 224,
+    "interpolation": "bilinear",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "input_name": "input",
+    "output_name": "logits",
+    "output_is_logits": true
+  },
+  "classes": [
+    "elliptical",
+    "spiral"
+  ],
+  "metrics": {
+    "split": "test",
+    "accuracy": 0.8625094727725452,
+    "macro_f1": 0.8584780901071769,
+    "macro_recall": 0.8574685900217296,
+    "per_class_recall": {
+      "elliptical": 0.8259860788863109,
+      "spiral": 0.8889511011571481
+    },
+    "confusion_matrix": [
+      [
+        3204,
+        675
+      ],
+      [
+        595,
+        4763
+      ]
+    ],
+    "train_accuracy": 0.8711591629391535,
+    "best_val_accuracy": 0.8604177279673968
+  },
+  "calibration": {
+    "temperature": 1.0
+  },
+  "thresholds": {
+    "min_confidence": null,
+    "min_margin": null
+  },
+  "trained": {
+    "date": null,
+    "epochs": 30,
+    "notebook": null,
+    "seed": null
+  },
+  "notes": ""
+}

@@ -127,7 +127,7 @@ def test_accounts_switched_off_gives_clear_error(monkeypatch):
 
 def test_health_reports_every_part(monkeypatch):
     slots = TestClient(app).get("/api/health").json()["slots"]
-    assert set(slots) == {"classifier", "knowledge_base", "accounts", "database", "llm"}
+    assert set(slots) == {"classifier", "galaxy_morphology", "knowledge_base", "accounts", "database", "llm"}
     assert slots["llm"]["status"] == "missing"            # tests hide the key (conftest.py)
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
     assert TestClient(app).get("/api/health").json()["slots"]["llm"]["status"] == "live"

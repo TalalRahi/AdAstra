@@ -56,6 +56,14 @@ class Settings:
     min_margin: float = float(os.getenv("MIN_MARGIN", "0.15"))
     top_k: int = 3
 
+    # Trained model artifacts (Step 2)
+    classifier_dir: Path = BACKEND_DIR / "artifacts" / "classifier"
+    galaxy_morphology_dir: Path = BACKEND_DIR / "artifacts" / "galaxy_morphology"
+    # The morphology model only runs when the main classifier says "galaxy"
+    # with at least this much confidence.
+    galaxy_eligible_class: str = "galaxy"
+    galaxy_gate_confidence: float = float(os.getenv("GALAXY_GATE_CONFIDENCE", "0.5"))
+
     # Knowledge base (Step 3)
     embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     knowledge_dir: Path = BACKEND_DIR / "artifacts" / "knowledge"  # index lives here
