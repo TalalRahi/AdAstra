@@ -21,6 +21,7 @@ export default function Layout() {
           <NavLink to="/chat" className={link}>Ask</NavLink>
           <NavLink to="/history" className={link}>History</NavLink>
           <NavLink to="/moon" className={link}>Moon</NavLink>
+          <NavLink to="/sky" className={link}>Sky</NavLink>
           {enabled && user && (
             <NavLink to="/account" className={link}>
               {profile?.name ?? user.displayName ?? 'Account'}

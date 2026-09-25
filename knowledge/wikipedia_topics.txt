@@ -45,3 +45,18 @@ Moon
 Lunar phase
 Comet
 Asteroid
+
+# The Sun and the planets (Sky tab)
+Sun
+Mercury (planet)
+Venus
+Earth
+Mars
+Jupiter
+Saturn
+Uranus
+Neptune
+
+# More galaxies (Sky tab); Milky Way and Andromeda Galaxy are listed above
+Triangulum Galaxy
+Whirlpool Galaxy

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import RichText from '../components/RichText'
 import SourceList from '../components/SourceList'
 import { askQuestion } from '../lib/api'
@@ -32,10 +33,15 @@ function loadSaved(): Message[] {
 
 export default function ChatPage() {
   const { result } = useStore()
+  const location = useLocation()
+  const navigate = useNavigate()
+  // A question sent from another page, e.g. "Ask AdAstra about Jupiter" on the Sky page.
+  const incoming = (location.state as { ask?: string } | null)?.ask
+  const sentIncoming = useRef(false)
   const [messages, setMessages] = useState<Message[]>(loadSaved)
   const [text, setText] = useState('')
   const [k, setK] = useState(4)
-  const [useResult, setUseResult] = useState(true)
+  const [useResult, setUseResult] = useState(!incoming) // a Sky question isn't about your last image
   const busy = messages.some((m) => m.response === null && m.error === null)
   const bottom = useRef<HTMLDivElement>(null)
 
@@ -73,6 +79,16 @@ export default function ChatPage() {
       setMessages((old) => old.map((m) => (m.id === id ? { ...m, error: (e as Error).message } : m)))
     }
   }
+
+  // Send the incoming question once, then clear it so a page refresh doesn't send it again.
+  useEffect(() => {
+    if (incoming && !sentIncoming.current) {
+      sentIncoming.current = true
+      navigate('.', { replace: true, state: null })
+      send(incoming)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

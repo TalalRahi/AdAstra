@@ -1,7 +1,7 @@
 {
   "embed_model": "sentence-transformers/all-MiniLM-L6-v2",
   "dim": 384,
-  "chunks": 2044,
+  "chunks": 2904,
   "sources": [
     "wikipedia:Andromeda Galaxy",
     "wikipedia:Asteroid",
@@ -9,6 +9,7 @@
     "wikipedia:Astronomy",
     "wikipedia:Comet",
     "wikipedia:Dark nebula",
+    "wikipedia:Earth",
     "wikipedia:Electromagnetic spectrum",
     "wikipedia:Elliptical galaxy",
     "wikipedia:Emission nebula",
@@ -18,16 +19,21 @@
     "wikipedia:Hubble sequence",
     "wikipedia:Irregular galaxy",
     "wikipedia:James Webb Space Telescope",
+    "wikipedia:Jupiter",
     "wikipedia:Light-year",
     "wikipedia:Lunar phase",
     "wikipedia:Main sequence",
+    "wikipedia:Mars",
+    "wikipedia:Mercury (planet)",
     "wikipedia:Milky Way",
     "wikipedia:Moon",
     "wikipedia:Nebula",
+    "wikipedia:Neptune",
     "wikipedia:Planet",
     "wikipedia:Planetary nebula",
     "wikipedia:Redshift",
     "wikipedia:Reflection nebula",
+    "wikipedia:Saturn",
     "wikipedia:Solar System",
     "wikipedia:Spiral galaxy",
     "wikipedia:Star",
@@ -35,9 +41,14 @@
     "wikipedia:Star formation",
     "wikipedia:Stellar classification",
     "wikipedia:Stellar evolution",
+    "wikipedia:Sun",
     "wikipedia:Supernova",
     "wikipedia:Supernova remnant",
-    "wikipedia:Telescope"
+    "wikipedia:Telescope",
+    "wikipedia:Triangulum Galaxy",
+    "wikipedia:Uranus",
+    "wikipedia:Venus",
+    "wikipedia:Whirlpool Galaxy"
   ],
-  "built_at": "2026-09-23T00:18:06+00:00"
+  "built_at": "2026-09-25T10:42:00+00:00"
 }

@@ -13,6 +13,7 @@ import ReportPage from './pages/ReportPage'
 import ResultsPage from './pages/ResultsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
+import SkyPage from './pages/SkyPage'
 import UploadPage from './pages/UploadPage'
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="chat" element={<ChatPage />} />
         <Route path="history" element={<HistoryPage />} />
         <Route path="moon" element={<MoonPage />} />
+        <Route path="sky" element={<SkyPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
