@@ -17,3 +17,4 @@ backend/artifacts/*
 !backend/artifacts/knowledge/
 !backend/artifacts/classifier/
 !backend/artifacts/galaxy_morphology/
+!backend/artifacts/clip/

@@ -1,0 +1,45 @@
+{
+  "slot": "clip_gate",
+  "architecture": "CLIP ViT-B/32",
+  "source": "openai/clip-vit-base-patch32",
+  "format": "onnx",
+  "file": "clip_vision.onnx",
+  "sha256": "ff0e1a0f154fd66b13168db5fc80c4733366a5bd655da79d2e1353e99c5f7f99",
+  "input": {
+    "layout": "NCHW",
+    "channels": "RGB",
+    "dtype": "float32",
+    "resize_shorter": 224,
+    "center_crop": 224,
+    "interpolation": "bicubic",
+    "mean": [
+      0.48145466,
+      0.4578275,
+      0.40821073
+    ],
+    "std": [
+      0.26862954,
+      0.26130258,
+      0.27577711
+    ],
+    "input_name": "pixel_values",
+    "output_name": "image_embedding"
+  },
+  "classes": [
+    "Constellation",
+    "Galaxy",
+    "Nebula",
+    "Planet",
+    "Star"
+  ],
+  "gate_groups": [
+    "astronomical",
+    "non_astronomical"
+  ],
+  "logit_scale": 100.0,
+  "likely_astronomical_threshold": 0.5,
+  "text_embeddings_file": "clip_text_embeddings.npz",
+  "max_parity_diff": 5.364418029785156e-07,
+  "quantization": "dynamic int8 (onnxruntime.quantization.quantize_dynamic, QInt8 weights)",
+  "notes": "Weights dynamically quantized from the fp32 export to fit Vercel Hobby's 500MB bundle limit (351.6MB -> 88.6MB). Verified: on 2 real test images, the fp32 vs int8 image embeddings had cosine similarity >=0.98, and the likely_astronomical gate decision was identical for both (see conversation log for the fp32 comparison)."
+}
