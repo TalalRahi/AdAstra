@@ -31,6 +31,12 @@ def _list(name: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _optional_float(name: str) -> float | None:
+    """Read an environment variable as a float, or None if unset/empty."""
+    raw = os.getenv(name)
+    return float(raw) if raw else None
+
+
 @dataclass(frozen=True)
 class Settings:
     # Which websites may call this API (the React app runs on port 5173).
@@ -63,6 +69,14 @@ class Settings:
     # with at least this much confidence.
     galaxy_eligible_class: str = "galaxy"
     galaxy_gate_confidence: float = float(os.getenv("GALAXY_GATE_CONFIDENCE", "0.5"))
+
+    # CLIP astronomical-image gate + zero-shot second opinion (Step 5).
+    # Artifact folder: manifest.json + the exported vision tower + the
+    # offline-computed text embeddings .npz (see training/export/export_clip.py).
+    clip_dir: Path = BACKEND_DIR / "artifacts" / "clip"
+    # If unset, each manifest's own "likely_astronomical_threshold" is used
+    # (0.5 as exported). Set this to override without re-exporting anything.
+    clip_astro_threshold: float | None = field(default_factory=lambda: _optional_float("CLIP_ASTRO_THRESHOLD"))
 
     # Knowledge base (Step 3)
     embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"

@@ -1,13 +1,20 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import HealthBanner from '../components/HealthBanner'
 import MoonIcon from '../components/MoonIcon'
 import { dateTime, fromNow, pct } from '../lib/format'
-import { loadHistory } from '../lib/history'
+import { loadHistory, type HistoryEntry } from '../lib/history'
 import { moonToday, PHASE_NAMES } from '../lib/moon'
 import { useStore } from '../lib/store'
 
 export default function DashboardPage() {
-  const recent = loadHistory().slice(0, 4)
+  // loadHistory() is now async (server-backed when signed in), so this loads
+  // in an effect instead of the old synchronous `loadHistory().slice(0, 4)`.
+  const [recent, setRecent] = useState<HistoryEntry[]>([])
+  useEffect(() => {
+    loadHistory().then((all) => setRecent(all.slice(0, 4)))
+  }, [])
+
   const moon = moonToday(new Date(), 2)
   const { setAnalysis } = useStore()
   const navigate = useNavigate()
@@ -47,10 +54,19 @@ export default function DashboardPage() {
                       <span className="grid size-14 place-items-center rounded bg-night text-xs text-muted">TIFF</span>
                     )}
                     <span className="min-w-0">
-                      <span className="block truncate font-medium">{e.result.classification.predicted_class}</span>
-                      <span className="block text-xs text-muted">
-                        {pct(e.result.classification.confidence)}, {dateTime(e.savedAt)}
-                      </span>
+                      {e.result.classification ? (
+                        <>
+                          <span className="block truncate font-medium">{e.result.classification.predicted_class}</span>
+                          <span className="block text-xs text-muted">
+                            {pct(e.result.classification.confidence)}, {dateTime(e.savedAt)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="block truncate font-medium text-muted">Not classified</span>
+                          <span className="block text-xs text-muted">{dateTime(e.savedAt)}</span>
+                        </>
+                      )}
                     </span>
                   </button>
                 </li>

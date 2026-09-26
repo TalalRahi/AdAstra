@@ -85,12 +85,20 @@ def to_model_input(img: Image.Image, spec: dict | None = None) -> np.ndarray:
     """RGB image → float32 array shaped (1, 3, H, W), preprocessed to match
     training exactly.
 
-    `spec` is a manifest's "input" block: {"resize_to": [W, H], "center_crop":
-    int | None, "mean": [...], "std": [...], "interpolation": "bilinear"}.
-    Verified byte-for-byte against the real training transform
-    (torchvision `Resize((256,256))` + `CenterCrop(224)`, which is an EXACT
-    resize — NOT aspect-ratio-preserving — followed by a centre crop):
-    on a random non-square test image the two produce max |diff| = 0.0.
+    `spec` is a manifest's "input" block. Two resize modes are supported,
+    chosen by which key is present — different models were trained with
+    different preprocessing, and both must be reproduced exactly:
+
+    - "resize_to": [W, H]  — an EXACT resize to that size (NOT aspect-ratio-
+      preserving), then an optional "center_crop". This is the classifier's
+      preprocessing. Verified byte-for-byte against the real training
+      transform (torchvision `Resize((256,256))` + `CenterCrop(224)`): on a
+      random non-square test image the two produce max |diff| = 0.0. DO NOT
+      change this path — the parity guarantee depends on it.
+    - "resize_shorter": int — an aspect-ratio-preserving resize so the
+      shorter side equals that value, then a center "center_crop". This is
+      CLIP's own preprocessing (see clip.py) and does not touch the
+      "resize_to" path above at all.
 
     Without a spec (demo mode, no model loaded yet), falls back to a plain
     resize to settings.input_size with ImageNet stats.
@@ -101,8 +109,15 @@ def to_model_input(img: Image.Image, spec: dict | None = None) -> np.ndarray:
         mean, std = MEAN, STD
     else:
         interp = Image.Resampling.BICUBIC if spec.get("interpolation") == "bicubic" else Image.Resampling.BILINEAR
-        rw, rh = spec["resize_to"]
-        resized = img.resize((rw, rh), interp)
+        if "resize_shorter" in spec:
+            target = spec["resize_shorter"]
+            w, h = img.size
+            scale = target / min(w, h)
+            rw, rh = round(w * scale), round(h * scale)
+            resized = img.resize((rw, rh), interp)
+        else:
+            rw, rh = spec["resize_to"]
+            resized = img.resize((rw, rh), interp)
         crop = spec.get("center_crop")
         if crop:
             left = (rw - crop) // 2

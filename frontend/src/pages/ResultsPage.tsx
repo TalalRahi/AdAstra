@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import ProbabilityList from '../components/ProbabilityList'
 import RichText from '../components/RichText'
@@ -14,14 +14,27 @@ export default function ResultsPage() {
   const sourcesRef = useRef<HTMLOListElement>(null)
 
   // One explanation per level, fetched the first time that level is chosen.
+  // Guarded with `result?.explanation` (not just `result`) because a result
+  // whose image failed the astronomical-image check has explanation: null.
   const [byLevel, setByLevel] = useState<Partial<Record<Level, ExplainResponse>>>(() =>
-    result
+    result?.explanation
       ? { [result.explanation.level]: { explanation: result.explanation, sources: result.sources, warnings: [] } }
       : {},
   )
-  const [level, setLevel] = useState<Level>(result?.explanation.level ?? 'beginner')
+  const [level, setLevel] = useState<Level>(result?.explanation?.level ?? 'beginner')
   const [loadingLevel, setLoadingLevel] = useState<Level | null>(null)
   const [explainError, setExplainError] = useState<string | null>(null)
+
+  // findThumbnail is async now (history can be server-backed), so this can't
+  // be a plain computed value any more — it has to be its own piece of
+  // state, loaded in an effect. Declared here, before any early return,
+  // because hooks must run in the same order on every render.
+  const [savedThumb, setSavedThumb] = useState<string | null>(null)
+  useEffect(() => {
+    if (result && !previewUrl) {
+      findThumbnail(result.request_id).then(setSavedThumb)
+    }
+  }, [result, previewUrl])
 
   if (!result) {
     return (
@@ -35,9 +48,61 @@ export default function ResultsPage() {
     )
   }
 
+  const image = previewUrl ?? savedThumb // after a reload, use the saved thumbnail
+
+  // CLIP decided this doesn't look like an astronomical image at all — the
+  // classifier never ran, so there is no prediction to show. Show why
+  // instead, rather than crashing on a null classification.
+  if (!result.classification) {
+    return (
+      <div className="space-y-8">
+        <div className="overflow-hidden rounded-lg border border-line bg-panel/60">
+          {image ? (
+            <img src={image} alt="The analysed image" className="max-h-96 w-full object-contain" />
+          ) : (
+            <p className="grid min-h-48 place-items-center p-6 text-center text-sm text-muted">
+              No preview available for this image.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-md border border-amber/60 bg-amber/10 px-5 py-4">
+          <h1 className="font-display text-2xl text-amber">Can&apos;t classify this image</h1>
+          <p className="mt-2 text-ink">
+            {result.clip.message ?? "This doesn't look like an astronomical image."}
+          </p>
+          {!result.clip.weights_loaded && (
+            <p className="mt-2 text-sm text-muted">
+              (Demo mode: no trained astronomical-image check is loaded yet, so this is a
+              placeholder judgement, not a real one.)
+            </p>
+          )}
+        </div>
+
+        {result.warnings.length > 0 && (
+          <ul className="list-disc space-y-1 pl-5 text-sm text-amber">
+            {result.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            clear()
+            navigate('/')
+          }}
+          className="rounded-md bg-halpha px-4 py-2 font-semibold text-night"
+        >
+          Try another image
+        </button>
+      </div>
+    )
+  }
+
   const c = result.classification
   const current = byLevel[level]
-  const image = previewUrl ?? findThumbnail(result.request_id) // after a reload, use the saved thumbnail
   const total = Object.values(result.timings_ms).reduce((a, b) => a + b, 0)
 
   const chooseLevel = async (next: Level) => {

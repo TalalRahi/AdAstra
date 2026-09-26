@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from adastra import __version__, db, pipeline
 from adastra.auth import AuthUser, auth_enabled, current_user, signed_in_if_enabled
 from adastra.classify import get_model
+from adastra.clip import get_model as get_clip_model
 from adastra.config import settings
 from adastra.morphology import get_model as get_morphology_model
 from adastra.imaging import ImageError
@@ -24,6 +25,9 @@ from adastra.schemas import (
     ExplainRequest,
     ExplainResponse,
     HealthResponse,
+    HistoryEntry,
+    HistoryEntryCreate,
+    HistoryListResponse,
     Level,
     Profile,
     ProfileUpdate,
@@ -83,6 +87,7 @@ def unhandled(request: Request, exc: Exception):
 def health():
     model = get_model()
     morphology_model = get_morphology_model()
+    clip_model = get_clip_model()
     return HealthResponse(
         ok=True,
         version=__version__,
@@ -98,6 +103,11 @@ def health():
                 status="live" if morphology_model.weights_loaded else "missing",
                 detail=morphology_model.architecture if morphology_model.weights_loaded
                 else "No model file yet — galaxy shape uses demo output when triggered.",
+            ),
+            "clip": SlotStatus(
+                status="live" if clip_model.weights_loaded else "missing",
+                detail=clip_model.architecture if clip_model.weights_loaded
+                else "No CLIP artifact yet — the astronomical-image check uses demo output.",
             ),
             "knowledge_base": SlotStatus(
                 status="live" if store.exists() else "missing",
@@ -137,11 +147,19 @@ def classify(file: UploadFile = File(...), level: Level = Form("beginner")):
         result = pipeline.run(data, level, request_id)
     except ImageError as e:
         return _error(e.status, e.code, e.message, request_id)
-    log.info(
-        "classify request_id=%s class=%s conf=%.3f mode=%s",
-        request_id, result.classification.predicted_class,
-        result.classification.confidence, result.mode,
-    )
+
+    if result.classification is not None:
+        log.info(
+            "classify request_id=%s class=%s conf=%.3f mode=%s",
+            request_id, result.classification.predicted_class,
+            result.classification.confidence, result.mode,
+        )
+    else:
+        # CLIP gated this one out before the classifier ever ran.
+        log.info(
+            "classify request_id=%s not_astronomical astro_score=%.3f mode=%s",
+            request_id, result.clip.astro_score, result.mode,
+        )
     return result
 
 
@@ -203,4 +221,48 @@ def delete_me(user: AuthUser = Depends(current_user)):
     deletes the Firebase account itself.)"""
     _require_db()
     db.delete_user(user.uid)
+    return {"deleted": True}
+
+
+# ---------------------------------------------------------------- history
+def _history_entry(doc: dict) -> HistoryEntry:
+    return HistoryEntry(
+        id=doc["_id"],
+        result=doc["result"],
+        file_name=doc["file_name"],
+        thumbnail=doc.get("thumbnail"),
+        saved_at=doc["saved_at"],
+    )
+
+
+@app.get("/api/history", response_model=HistoryListResponse)
+def get_history(user: AuthUser = Depends(current_user)):
+    """Every analysis this user has saved, most recent first. Read from the
+    database rather than the browser, so it's the same list on any device."""
+    _require_db()
+    return HistoryListResponse(entries=[_history_entry(d) for d in db.list_history(user.uid)])
+
+
+@app.post("/api/history", response_model=HistoryEntry)
+def save_history(entry: HistoryEntryCreate, user: AuthUser = Depends(current_user)):
+    """Called right after a classification completes, so it's saved before
+    the user navigates anywhere else."""
+    _require_db()
+    doc = db.add_history_entry(
+        user.uid, entry.result.model_dump(mode="json"), entry.file_name, entry.thumbnail
+    )
+    return _history_entry(doc)
+
+
+@app.delete("/api/history/{entry_id}")
+def delete_history_entry(entry_id: str, user: AuthUser = Depends(current_user)):
+    _require_db()
+    db.delete_history_entry(user.uid, entry_id)
+    return {"deleted": True}
+
+
+@app.delete("/api/history")
+def clear_history(user: AuthUser = Depends(current_user)):
+    _require_db()
+    db.clear_history(user.uid)
     return {"deleted": True}

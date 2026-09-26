@@ -6,8 +6,10 @@ import type {
   ClassifyResponse,
   ExplainResponse,
   HealthResponse,
+  HistoryListResponse,
   Level,
   Profile,
+  ServerHistoryEntry,
 } from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api').replace(/\/$/, '')
@@ -122,4 +124,34 @@ export function saveMe(name: string, emailUpdates: boolean): Promise<Profile> {
 /** Delete everything AdAstra stores about the signed-in user. */
 export function deleteMe(): Promise<{ deleted: boolean }> {
   return request('/me', { method: 'DELETE' })
+}
+
+// ---------------------------------------------------------------- history
+// (server-side, per signed-in user — see lib/history.ts, which is what
+// pages actually call; this file just mirrors the backend's shapes and paths.)
+
+/** This user's saved analyses, most recent first, from the database. */
+export function getHistory(): Promise<HistoryListResponse> {
+  return request('/history')
+}
+
+/** Save one completed analysis to the signed-in user's history. */
+export function saveHistoryEntry(
+  result: ClassifyResponse,
+  fileName: string,
+  thumbnail: string | null,
+): Promise<ServerHistoryEntry> {
+  return request('/history', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ result, file_name: fileName, thumbnail }),
+  })
+}
+
+export function deleteHistoryEntryRemote(id: string): Promise<{ deleted: boolean }> {
+  return request(`/history/${id}`, { method: 'DELETE' })
+}
+
+export function clearHistoryRemote(): Promise<{ deleted: boolean }> {
+  return request('/history', { method: 'DELETE' })
 }

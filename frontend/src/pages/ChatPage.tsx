@@ -72,7 +72,9 @@ export default function ChatPage() {
     const id = `m${Date.now()}`
     setMessages((old) => [...old, { id, question: q, response: null, error: null }])
     try {
-      const context = useResult && result ? result.classification : null
+      // result.classification is null when the last image failed the
+      // astronomical-image check — nothing to attach as context then.
+      const context = useResult && result?.classification ? result.classification : null
       const response = await askQuestion(q, k, history, context)
       setMessages((old) => old.map((m) => (m.id === id ? { ...m, response } : m)))
     } catch (e) {
@@ -113,7 +115,7 @@ export default function ChatPage() {
         </p>
       </header>
 
-      {result && (
+      {result?.classification && (
         <label className="flex items-start gap-3 rounded-md border border-line p-3 text-sm">
           <input
             type="checkbox"
@@ -133,7 +135,10 @@ export default function ChatPage() {
         <div>
           <p className="mb-3 text-sm text-muted">Try one of these:</p>
           <div className="flex flex-wrap gap-2">
-            {(result && useResult ? [`Tell me more about ${result.classification.predicted_class}`] : [])
+            {(result?.classification && useResult
+              ? [`Tell me more about ${result.classification.predicted_class}`]
+              : []
+            )
               .concat(SUGGESTIONS)
               .map((s) => (
                 <button

@@ -1,5 +1,6 @@
 // A printable report of one analysis. The browser's print window can save it
 // as a PDF ("Save as PDF" as the destination), so no PDF library is needed.
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import RichText from '../components/RichText'
 import { dateTime, LEVELS, pct } from '../lib/format'
@@ -11,6 +12,15 @@ export default function ReportPage() {
   const { result, previewUrl } = useStore()
   const location = useLocation()
 
+  // findThumbnail is async now (history can be server-backed) — see the same
+  // fix in ResultsPage.tsx. Declared before any early return (rules of hooks).
+  const [savedThumb, setSavedThumb] = useState<string | null>(null)
+  useEffect(() => {
+    if (result && !previewUrl) {
+      findThumbnail(result.request_id).then(setSavedThumb)
+    }
+  }, [result, previewUrl])
+
   if (!result) {
     return (
       <div className="py-16">
@@ -20,12 +30,26 @@ export default function ReportPage() {
     )
   }
 
+  // The image failed the astronomical-image check, so nothing was ever
+  // classified or explained — there's no report to build for it.
+  if (!result.classification || !result.explanation) {
+    return (
+      <div className="py-16">
+        <h1 className="font-display text-3xl">Nothing to report</h1>
+        <p className="mt-2 text-muted">
+          This image didn't pass the astronomical-image check, so there's no classification to include in a report.
+        </p>
+        <Link to="/results" className="mt-4 inline-block underline">Back to results</Link>
+      </div>
+    )
+  }
+
   // The results page passes the explanation level that was on screen; otherwise use the original.
   const chosen = (location.state as { explained?: ExplainResponse } | null)?.explained
   const explanation = chosen?.explanation ?? result.explanation
   const sources = chosen?.sources ?? result.sources
   const c = result.classification
-  const image = previewUrl ?? findThumbnail(result.request_id)
+  const image = previewUrl ?? savedThumb
   const levelLabel = LEVELS.find((l) => l.value === explanation.level)?.label
 
   return (

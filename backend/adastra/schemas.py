@@ -30,6 +30,27 @@ class Classification(BaseModel):
     model: ModelInfo
 
 
+class ClipGate(BaseModel):
+    """An independent, pretrained-only check, run BEFORE the classifier:
+    does this even look like an astronomical image? When
+    `likely_astronomical=false`, the pipeline stops here — `classification`,
+    `galaxy_morphology` and `explanation` on the response are all `null`,
+    and `message` is the reason to show the user instead of a result.
+
+    `weights_loaded=false` means the real CLIP artifact isn't in place yet:
+    this block is demo output, not a real judgement about the image.
+    """
+
+    weights_loaded: bool
+    architecture: str
+    astro_score: float           # 0-1: how "astronomical" CLIP thinks this looks
+    threshold: float             # astro_score below this -> likely_astronomical=false
+    likely_astronomical: bool
+    zero_shot_top3: list[ClassProbability]  # CLIP's own opinion, independent of the classifier
+    agrees_with_classifier: bool | None = None  # null when classification didn't run
+    message: str | None = None   # set when likely_astronomical=false
+
+
 class Source(BaseModel):
     id: int  # 1-based, matches [n] in the explanation text
     title: str
@@ -72,10 +93,13 @@ class ClassifyResponse(BaseModel):
     mode: Mode
     request_id: str
     image: ImageInfo
-    classification: Classification
-    galaxy_morphology: GalaxyMorphology
-    explanation: Explanation
-    sources: list[Source]
+    clip: ClipGate
+    # All three are null when clip.likely_astronomical is false — the image
+    # failed the astronomical-image check, so nothing downstream ran.
+    classification: Classification | None = None
+    galaxy_morphology: GalaxyMorphology | None = None
+    explanation: Explanation | None = None
+    sources: list[Source] = Field(default_factory=list)
     timings_ms: dict[str, float]
     warnings: list[str]
 
@@ -152,3 +176,28 @@ class Profile(BaseModel):
 class ProfileUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     email_updates: bool
+
+
+# ---------------------------------------------------------------- history
+class HistoryEntry(BaseModel):
+    """One saved analysis. Stored server-side per signed-in user, so it
+    follows them to any device or browser — this is what replaced the old
+    browser-only localStorage history."""
+
+    id: str
+    result: ClassifyResponse
+    file_name: str
+    thumbnail: str | None
+    saved_at: datetime
+
+
+class HistoryEntryCreate(BaseModel):
+    """What the browser sends right after an analysis completes."""
+
+    result: ClassifyResponse
+    file_name: str = Field(max_length=255)
+    thumbnail: str | None = None
+
+
+class HistoryListResponse(BaseModel):
+    entries: list[HistoryEntry]

@@ -35,7 +35,7 @@ export default function UploadPage() {
       if (prepared.resized) {
         result.warnings.unshift('The image was shrunk in your browser before upload.')
       }
-      addToHistory(result, file.name, await makeThumbnail(file)) // saved in this browser
+      await addToHistory(result, file.name, await makeThumbnail(file)) // saved to your account
       setAnalysis(result, preview)
       navigate('/results')
     } catch (e) {

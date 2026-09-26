@@ -1,13 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { dateTime, pct } from '../lib/format'
 import { clearHistory, loadHistory, removeFromHistory, type HistoryEntry } from '../lib/history'
 import { useStore } from '../lib/store'
 
 export default function HistoryPage() {
-  const [entries, setEntries] = useState<HistoryEntry[]>(loadHistory)
+  const [entries, setEntries] = useState<HistoryEntry[]>([])
+  const [loading, setLoading] = useState(true)
   const { setAnalysis } = useStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    loadHistory().then((all) => {
+      setEntries(all)
+      setLoading(false)
+    })
+  }, [])
 
   const open = (e: HistoryEntry) => {
     setAnalysis(e.result, e.thumbnail)
@@ -20,14 +28,14 @@ export default function HistoryPage() {
         <div>
           <h1 className="font-display text-4xl">History</h1>
           <p className="mt-2 text-muted">
-            Your last {entries.length > 0 ? entries.length : ''} analyses, saved in this browser only.
+            Your last {entries.length > 0 ? entries.length : ''} analyses, saved to your account.
           </p>
         </div>
         {entries.length > 0 && (
           <button
             type="button"
             onClick={() => {
-              if (window.confirm('Delete all saved analyses from this browser?')) {
+              if (window.confirm('Delete all saved analyses?')) {
                 clearHistory()
                 setEntries([])
               }
@@ -39,7 +47,7 @@ export default function HistoryPage() {
         )}
       </header>
 
-      {entries.length === 0 ? (
+      {!loading && entries.length === 0 ? (
         <div className="py-10">
           <p className="text-muted">No analyses yet.</p>
           <Link to="/" className="mt-4 inline-block rounded-md bg-halpha px-4 py-2 font-semibold text-night">
@@ -49,6 +57,8 @@ export default function HistoryPage() {
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {entries.map((e) => {
+            // Null when this saved image failed the astronomical-image check
+            // — nothing was classified, so there's nothing to show but that.
             const c = e.result.classification
             return (
               <li key={e.id} className="overflow-hidden rounded-lg border border-line bg-panel/60">
@@ -59,12 +69,21 @@ export default function HistoryPage() {
                     <div className="grid h-40 place-items-center text-sm text-muted">No preview (TIFF)</div>
                   )}
                   <div className="p-4">
-                    <p className="font-display text-xl">{c.predicted_class}</p>
-                    <p className="text-sm">
-                      {pct(c.confidence)}
-                      {c.uncertain && <span className="text-amber">, uncertain</span>}
-                      {!c.model.weights_loaded && <span className="text-amber">, demo</span>}
-                    </p>
+                    {c ? (
+                      <>
+                        <p className="font-display text-xl">{c.predicted_class}</p>
+                        <p className="text-sm">
+                          {pct(c.confidence)}
+                          {c.uncertain && <span className="text-amber">, uncertain</span>}
+                          {!c.model.weights_loaded && <span className="text-amber">, demo</span>}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-display text-xl text-muted">Not classified</p>
+                        <p className="text-sm text-amber">Not an astronomical image</p>
+                      </>
+                    )}
                     <p className="mt-2 truncate text-xs text-muted">
                       {dateTime(e.savedAt)}, {e.fileName}
                     </p>
@@ -73,7 +92,9 @@ export default function HistoryPage() {
                 <div className="border-t border-line px-4 py-2 text-right">
                   <button
                     type="button"
-                    onClick={() => setEntries(removeFromHistory(e.id))}
+                    onClick={() => {
+                      removeFromHistory(e.id).then(setEntries)
+                    }}
                     className="text-xs text-muted underline hover:text-halpha"
                   >
                     Delete
