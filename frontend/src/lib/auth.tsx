@@ -21,6 +21,7 @@ interface AuthState {
   enabled: boolean          // false if Firebase isn't configured
   loading: boolean          // true until we know whether someone is signed in
   user: User | null
+  verified: boolean         // has the signed-in user clicked their verification link?
   profile: Profile | null
   profileError: string | null
   signUp: (name: string, email: string, password: string, emailUpdates: boolean) => Promise<void>
@@ -28,6 +29,10 @@ interface AuthState {
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   resendVerification: () => Promise<void>
+  /** Ask Firebase again whether the email is verified (after the user clicked the
+   *  link in another tab). Also fetches a fresh pass, because the old one still
+   *  says "not verified" until it is renewed. Returns the new answer. */
+  refreshVerification: () => Promise<boolean>
   setEmailUpdates: (optedIn: boolean) => Promise<void>
   deleteAccount: () => Promise<void>
 }
@@ -54,6 +59,7 @@ export function friendlyError(e: unknown): string {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [verified, setVerified] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [loading, setLoading] = useState(firebaseEnabled)
@@ -66,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTokenProvider(async () => (firebaseAuth.currentUser ? firebaseAuth.currentUser.getIdToken() : null))
     return onAuthStateChanged(firebaseAuth, async (u) => {
       setUser(u)
+      setVerified(Boolean(u?.emailVerified))
       setProfileError(null)
       if (!u) {
         setProfile(null)
@@ -89,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: firebaseEnabled,
     loading,
     user,
+    verified,
     profile,
     profileError,
 
@@ -98,7 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const cred = await createUserWithEmailAndPassword(need(), email, password)
         await updateProfile(cred.user, { displayName: name })
         sendEmailVerification(cred.user).catch(() => {}) // a failed email must not block sign-up
-        setProfile(await saveMe(name, emailUpdates))
+        try {
+          setProfile(await saveMe(name, emailUpdates))
+        } catch {
+          // The account exists; if saving the profile failed, it is created
+          // with default settings on the first visit (see getMe), and the
+          // email choice can be changed on the Account page.
+        }
       } finally {
         signingUp.current = false
       }
@@ -117,7 +131,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async resendVerification() {
-      if (need().currentUser) await sendEmailVerification(need().currentUser!)
+      const current = need().currentUser
+      if (current) await sendEmailVerification(current)
+    },
+
+    async refreshVerification() {
+      const current = need().currentUser
+      if (!current) return false
+      await current.reload()                       // ask Firebase for the latest account state
+      if (current.emailVerified) {
+        await current.getIdToken(true)             // renew the pass so the server sees "verified"
+      }
+      setVerified(current.emailVerified)
+      return current.emailVerified
     },
 
     async setEmailUpdates(optedIn) {

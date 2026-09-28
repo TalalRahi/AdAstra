@@ -49,8 +49,12 @@ export default function ReportPage() {
   const explanation = chosen?.explanation ?? result.explanation
   const sources = chosen?.sources ?? result.sources
   const c = result.classification
+  const m = result.galaxy_morphology
   const image = previewUrl ?? savedThumb
   const levelLabel = LEVELS.find((l) => l.value === explanation.level)?.label
+
+  // Only include the galaxy shape when the second stage actually ran.
+  const shapeRan = Boolean(m && m.ran && m.predicted_class)
 
   return (
     <div className="space-y-6">
@@ -117,6 +121,33 @@ export default function ReportPage() {
             </p>
           </div>
         </section>
+
+        {shapeRan && m && (
+          <section>
+            <h2 className="font-display text-2xl">Galaxy shape</h2>
+            <p className="mt-2 text-lg">
+              <strong>{m.predicted_class}</strong>
+              {m.confidence != null && <span className="text-zinc-600">, {pct(m.confidence)} confident</span>}
+            </p>
+            {m.probabilities && m.probabilities.length > 0 && (
+              <table className="mt-3 w-full max-w-sm text-sm">
+                <tbody>
+                  {m.probabilities.map((p) => (
+                    <tr key={p.label} className="border-b border-zinc-100">
+                      <td className="py-1">{p.label}</td>
+                      <td className="py-1 text-right tabular-nums">{pct(p.probability)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p className="mt-2 text-xs text-zinc-500">
+              Second-stage model: {m.model?.architecture ?? 'not recorded'}. It only runs when the main classifier is
+              confident the image is a galaxy.
+              {m.model && !m.model.weights_loaded && ' Demo model: this shape is a placeholder.'}
+            </p>
+          </section>
+        )}
 
         <section>
           <h2 className="font-display text-2xl">Explanation ({levelLabel} level)</h2>

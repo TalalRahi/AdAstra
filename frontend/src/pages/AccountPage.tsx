@@ -4,8 +4,10 @@ import { friendlyError, useAuth } from '../lib/auth'
 import { dateTime } from '../lib/format'
 
 export default function AccountPage() {
-  const { enabled, loading, user, profile, profileError, signOut, resendVerification, setEmailUpdates, deleteAccount } =
-    useAuth()
+  const {
+    enabled, loading, user, verified, profile, profileError,
+    signOut, resendVerification, refreshVerification, setEmailUpdates, deleteAccount,
+  } = useAuth()
   const navigate = useNavigate()
   const justSignedUp = (useLocation().state as { justSignedUp?: boolean } | null)?.justSignedUp
   const [saving, setSaving] = useState(false)
@@ -39,6 +41,12 @@ export default function AccountPage() {
     }
   }
 
+  const checkVerified = () =>
+    run(async () => {
+      const ok = await refreshVerification()
+      setMessage(ok ? 'Your email is verified. Thank you!' : 'Not verified yet. Click the link in the email first.')
+    })
+
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <header>
@@ -46,9 +54,13 @@ export default function AccountPage() {
         {justSignedUp && (
           <div className="mt-3 rounded-md border border-oiii/50 bg-oiii/10 px-4 py-3 text-sm text-oiii">
             <p>Welcome to AdAstra! We've sent a verification link to {user.email}.</p>
-            <Link to="/dashboard" className="mt-3 inline-block rounded-md bg-halpha px-4 py-2 font-semibold text-night">
-              Start exploring
-            </Link>
+            {verified ? (
+              <Link to="/dashboard" className="mt-3 inline-block rounded-md bg-halpha px-4 py-2 font-semibold text-night">
+                Start exploring
+              </Link>
+            ) : (
+              <p className="mt-2">Click the link in the email, then press &ldquo;I&apos;ve verified&rdquo; below to unlock the site.</p>
+            )}
           </div>
         )}
       </header>
@@ -57,18 +69,27 @@ export default function AccountPage() {
         <p><span className="text-muted">Name:</span> {profile?.name ?? user.displayName ?? '…'}</p>
         <p>
           <span className="text-muted">Email:</span> {user.email}{' '}
-          {user.emailVerified ? (
+          {verified ? (
             <span className="text-sm text-oiii">(verified)</span>
           ) : (
             <span className="text-sm text-amber">
               (not verified){' '}
               <button type="button" disabled={saving} className="underline"
-                onClick={() => run(resendVerification, 'Verification email sent. Check your inbox.')}>
+                onClick={() => run(resendVerification, 'Verification email sent. Check your inbox and spam folder.')}>
                 send again
+              </button>
+              {' · '}
+              <button type="button" disabled={saving} className="underline" onClick={checkVerified}>
+                I&apos;ve verified, refresh
               </button>
             </span>
           )}
         </p>
+        {!verified && (
+          <p className="text-xs text-muted">
+            Until your email is verified you can&apos;t analyse images or use the assistant.
+          </p>
+        )}
         {profile && <p className="text-sm text-muted">Member since {dateTime(profile.created_at)}</p>}
         {profileError && <p className="text-sm text-halpha">Could not load your profile: {profileError}</p>}
       </section>

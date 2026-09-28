@@ -5,6 +5,7 @@ import type {
   Classification,
   ClassifyResponse,
   ExplainResponse,
+  GalaxyMorphology,
   HealthResponse,
   HistoryListResponse,
   Level,
@@ -84,12 +85,17 @@ export function classify(file: Blob, filename: string, level: Level): Promise<Cl
   return request('/classify', { method: 'POST', body: form })
 }
 
-/** Re-explain an earlier result at another level (no re-upload needed). */
-export function explain(classification: Classification, level: Level): Promise<ExplainResponse> {
+/** Re-explain an earlier result at another level (no re-upload needed).
+ *  The galaxy shape is sent too, so the new explanation still mentions it. */
+export function explain(
+  classification: Classification,
+  level: Level,
+  galaxyMorphology: GalaxyMorphology | null = null,
+): Promise<ExplainResponse> {
   return request('/explain', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ classification, level }),
+    body: JSON.stringify({ classification, level, galaxy_morphology: galaxyMorphology }),
   })
 }
 

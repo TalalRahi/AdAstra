@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from adastra import __version__, db, pipeline
-from adastra.auth import AuthUser, auth_enabled, current_user, signed_in_if_enabled
+from adastra.auth import AuthUser, EmailNotVerified, auth_enabled, current_user, signed_in_if_enabled
 from adastra.classify import get_model
 from adastra.clip import get_model as get_clip_model
 from adastra.config import settings
@@ -67,8 +67,11 @@ HTTP_CODES = {401: "not_signed_in", 403: "forbidden", 404: "not_found", 405: "me
 def http_error(request: Request, exc: StarletteHTTPException):
     """Errors raised on purpose (e.g. "please sign in") use the same JSON shape."""
     request_id = uuid.uuid4().hex[:12]
-    return _error(exc.status_code, HTTP_CODES.get(exc.status_code, f"http_{exc.status_code}"),
-                  str(exc.detail), request_id)
+    if isinstance(exc, EmailNotVerified):
+        code = "email_not_verified"
+    else:
+        code = HTTP_CODES.get(exc.status_code, f"http_{exc.status_code}")
+    return _error(exc.status_code, code, str(exc.detail), request_id)
 
 
 @app.exception_handler(Exception)
@@ -133,7 +136,8 @@ def health():
     )
 
 
-# The three main features need a signed-in user (when accounts are switched on).
+# The three main features need a signed-in user with a verified email
+# (when accounts are switched on).
 signed_in = Depends(signed_in_if_enabled)
 
 

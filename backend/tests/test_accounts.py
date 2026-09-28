@@ -43,10 +43,10 @@ SIGNER = crypt.RSASigner.from_string(KEY_PEM, key_id="k1")
 
 
 def token(uid="user-1", aud=PROJECT, iss=f"https://securetoken.google.com/{PROJECT}",
-          expires_in=3600, email="amreen@example.com", signer=SIGNER):
+          expires_in=3600, email="amreen@example.com", signer=SIGNER, verified=True):
     t = int(time.time())
     payload = {"iss": iss, "aud": aud, "sub": uid, "iat": t, "exp": t + expires_in,
-               "email": email, "email_verified": True, "name": "Amreen"}
+               "email": email, "email_verified": verified, "name": "Amreen"}
     return jwt.encode(signer, payload).decode()
 
 
@@ -127,7 +127,9 @@ def test_accounts_switched_off_gives_clear_error(monkeypatch):
 
 def test_health_reports_every_part(monkeypatch):
     slots = TestClient(app).get("/api/health").json()["slots"]
-    assert set(slots) == {"classifier", "galaxy_morphology", "knowledge_base", "accounts", "database", "llm"}
+    assert set(slots) == {
+        "classifier", "galaxy_morphology", "clip", "knowledge_base", "accounts", "database", "llm",
+    }
     assert slots["llm"]["status"] == "missing"            # tests hide the key (conftest.py)
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
     assert TestClient(app).get("/api/health").json()["slots"]["llm"]["status"] == "live"
@@ -156,8 +158,39 @@ def test_main_features_work_when_signed_in(client):
     r = client.post("/api/classify", files={"file": ("a.png", small_png())}, headers=bearer(token()))
     assert r.status_code == 200
     classification = r.json()["classification"]
+    assert classification is not None                            # conftest makes the CLIP gate pass
     r = client.post("/api/explain", json={"classification": classification, "level": "advanced"},
                     headers=bearer(token()))
     assert r.status_code == 200
     r = client.post("/api/rag-query", json={"question": "What is a star?"}, headers=bearer(token()))
     assert r.status_code == 200
+
+
+# ---------------------------------------------------------------- email verification
+def test_unverified_email_cannot_use_the_main_features(client):
+    unverified = bearer(token(verified=False))
+    r = client.post("/api/classify", files={"file": ("a.png", small_png())}, headers=unverified)
+    assert r.status_code == 403 and r.json()["error"]["code"] == "email_not_verified"
+    r = client.post("/api/rag-query", json={"question": "What is a star?"}, headers=unverified)
+    assert r.status_code == 403 and r.json()["error"]["code"] == "email_not_verified"
+
+    # explain too: get a real classification with a verified pass, then try it unverified
+    good = client.post("/api/classify", files={"file": ("a.png", small_png())}, headers=bearer(token()))
+    classification = good.json()["classification"]
+    r = client.post("/api/explain", json={"classification": classification, "level": "advanced"},
+                    headers=unverified)
+    assert r.status_code == 403 and r.json()["error"]["code"] == "email_not_verified"
+
+
+def test_unverified_user_can_still_manage_their_account(client):
+    unverified = bearer(token(verified=False))
+    r = client.get("/api/me", headers=unverified)
+    assert r.status_code == 200 and r.json()["email_verified"] is False
+    r = client.post("/api/me", json={"name": "Amreen", "email_updates": False}, headers=unverified)
+    assert r.status_code == 200
+    assert client.delete("/api/me", headers=unverified).json() == {"deleted": True}
+
+
+def test_verified_email_is_reported_in_the_profile(client):
+    r = client.get("/api/me", headers=bearer(token(verified=True)))
+    assert r.json()["email_verified"] is True

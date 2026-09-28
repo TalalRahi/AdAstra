@@ -12,6 +12,11 @@ How the check works (Firebase's documented rules for ID tokens):
   2. "aud" (audience) must be our Firebase project id.
   3. "iss" (issuer) must be https://securetoken.google.com/<project id>.
   4. It must not be expired, and "sub" (the user id) must not be empty.
+
+Email verification: the pass also says whether the user has clicked the link
+in their verification email ("email_verified"). The three main features
+(classify, explain, chat) require it; the profile endpoints do not, so an
+unverified user can still see their account, resend the email, or delete it.
 """
 
 import threading
@@ -45,6 +50,18 @@ class AuthUser(BaseModel):
 
 class AuthError(Exception):
     pass
+
+
+class EmailNotVerified(HTTPException):
+    """403, with its own error code ("email_not_verified") so the website can
+    tell this apart from other 'forbidden' errors."""
+
+    def __init__(self):
+        super().__init__(
+            403,
+            detail="Please verify your email address first. Check your inbox (and spam folder) "
+                   "for the link, then try again.",
+        )
 
 
 def auth_enabled() -> bool:
@@ -95,7 +112,7 @@ def _user_from_header(creds: HTTPAuthorizationCredentials | None) -> AuthUser | 
 
 
 def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -> AuthUser:
-    """For endpoints that REQUIRE sign-in."""
+    """For endpoints that REQUIRE sign-in (verified or not)."""
     user = _user_from_header(creds)
     if user is None:
         raise HTTPException(401, detail="Please sign in first.")
@@ -110,10 +127,14 @@ def optional_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) 
 def signed_in_if_enabled(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -> AuthUser | None:
     """For the main features (classify, explain, chat).
 
-    When accounts are switched on (FIREBASE_PROJECT_ID is set), a valid pass is
-    REQUIRED, so only registered users can use the site and its Gemma quota.
+    When accounts are switched on (FIREBASE_PROJECT_ID is set), a valid pass
+    from a user with a VERIFIED email is REQUIRED, so only registered,
+    verified users can use the site and its Gemma quota.
     When accounts are switched off, the features stay open (local testing).
     """
     if not auth_enabled():
         return None
-    return current_user(creds)
+    user = current_user(creds)
+    if not user.email_verified:
+        raise EmailNotVerified()
+    return user

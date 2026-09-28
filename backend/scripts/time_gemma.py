@@ -24,6 +24,8 @@ def build_prompt():
     return PROMPT.invoke({
         "audience": audience, "style": style, "predicted_class": "Spiral galaxy",
         "confidence": "87%", "uncertainty": "The classifier is fairly confident.",
+        # The prompt needs this field since the galaxy-morphology stage was added.
+        "morphology": "Morphology: not applicable — do not discuss galaxy shape/morphology.",
         "passages": format_numbered(docs),
     })
 

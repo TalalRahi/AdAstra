@@ -4,6 +4,8 @@ import type { HealthResponse } from '../lib/types'
 
 const NAMES: Record<string, string> = {
   classifier: 'Classifier',
+  galaxy_morphology: 'Galaxy shape',
+  clip: 'Astronomical-image check',
   knowledge_base: 'Knowledge base',
   llm: 'Explanations (Gemma)',
   accounts: 'Accounts',

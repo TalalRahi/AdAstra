@@ -11,6 +11,13 @@ from .rag import explain_chain
 from .schemas import ClassifyResponse, ImageInfo, Level
 
 
+def labels_agree(a: str, b: str) -> bool:
+    """Do two class labels mean the same class? The CLIP manifest writes
+    "Galaxy" and the classifier manifest writes "galaxy", so compare without
+    caring about capital letters or stray spaces."""
+    return a.strip().lower() == b.strip().lower()
+
+
 def run(data: bytes, level: Level, request_id: str | None = None) -> ClassifyResponse:
     request_id = request_id or uuid.uuid4().hex[:12]
     timings: dict[str, float] = {}
@@ -71,8 +78,9 @@ def run(data: bytes, level: Level, request_id: str | None = None) -> ClassifyRes
         warnings.append("No trained model is loaded; classification is demo output.")
 
     # Now that we have a predicted class, fill in CLIP's agreement check.
-    clip_gate.agrees_with_classifier = (
-        clip_gate.zero_shot_top3[0].label == classification.predicted_class
+    # (Case-insensitive: the two manifests capitalise class names differently.)
+    clip_gate.agrees_with_classifier = labels_agree(
+        clip_gate.zero_shot_top3[0].label, classification.predicted_class
     )
 
     # Conditional second stage: only actually runs for a confident "galaxy" prediction

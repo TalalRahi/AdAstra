@@ -71,6 +71,9 @@ export default function ResultsPage() {
           <p className="mt-2 text-ink">
             {result.clip.message ?? "This doesn't look like an astronomical image."}
           </p>
+          <p className="mt-2 text-sm text-muted">
+            Astronomical score {pct(result.clip.astro_score)}; it needs at least {pct(result.clip.threshold)}.
+          </p>
           {!result.clip.weights_loaded && (
             <p className="mt-2 text-sm text-muted">
               (Demo mode: no trained astronomical-image check is loaded yet, so this is a
@@ -102,8 +105,14 @@ export default function ResultsPage() {
   }
 
   const c = result.classification
+  const m = result.galaxy_morphology
+  const clipGate = result.clip
   const current = byLevel[level]
   const total = Object.values(result.timings_ms).reduce((a, b) => a + b, 0)
+
+  // The galaxy second stage only matters when the main class is "galaxy".
+  const isGalaxy = c.predicted_class.toLowerCase() === 'galaxy'
+  const morphologyRan = Boolean(m && m.ran && m.predicted_class)
 
   const chooseLevel = async (next: Level) => {
     setLevel(next)
@@ -111,7 +120,8 @@ export default function ResultsPage() {
     if (byLevel[next] || loadingLevel) return // already have it, or busy
     setLoadingLevel(next)
     try {
-      const response = await explain(c, next)
+      // Send the galaxy shape too, so the new explanation still mentions it.
+      const response = await explain(c, next, result.galaxy_morphology)
       setByLevel((old) => ({ ...old, [next]: response }))
     } catch (e) {
       setExplainError((e as Error).message)
@@ -162,6 +172,60 @@ export default function ResultsPage() {
           <div className="mt-8">
             <h2 className="mb-3 font-display text-lg">All classes</h2>
             <ProbabilityList items={c.probabilities} />
+          </div>
+
+          {/* Second stage: galaxy shape. Shown only for galaxies. */}
+          {isGalaxy && m && (
+            <div className="mt-8 rounded-md border border-line bg-panel/60 p-4">
+              <h2 className="font-display text-lg">Galaxy shape</h2>
+              {morphologyRan ? (
+                <>
+                  <p className="mt-2">
+                    <span className="font-display text-2xl">{m.predicted_class}</span>
+                    {m.confidence != null && (
+                      <span className="ml-2 text-muted">{pct(m.confidence)} confident</span>
+                    )}
+                  </p>
+                  {m.probabilities && m.probabilities.length > 0 && (
+                    <div className="mt-3">
+                      <ProbabilityList items={m.probabilities} />
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs text-muted">
+                    A second, separate model trained on Galaxy Zoo (two classes). It only runs when the
+                    main classifier is confident the image is a galaxy.
+                  </p>
+                  {m.model && !m.model.weights_loaded && (
+                    <p className="mt-2 text-xs text-amber">
+                      Demo model: this shape is a placeholder, not a real prediction.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-muted">
+                  {m.reason ?? 'The galaxy-shape model did not run for this image.'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* The astronomical-image check that ran before the classifier. */}
+          <div className="mt-6 text-xs text-muted">
+            <p>
+              Astronomical-image check: passed ({pct(clipGate.astro_score)}, needs at least{' '}
+              {pct(clipGate.threshold)}).
+            </p>
+            {clipGate.weights_loaded && clipGate.zero_shot_top3[0] && (
+              <p className="mt-1">
+                CLIP&apos;s own guess: {clipGate.zero_shot_top3[0].label.toLowerCase()} (
+                {pct(clipGate.zero_shot_top3[0].probability)})
+                {clipGate.agrees_with_classifier === true && ', agrees with the classifier.'}
+                {clipGate.agrees_with_classifier === false && ', differs from the classifier.'}
+              </p>
+            )}
+            {!clipGate.weights_loaded && (
+              <p className="mt-1 text-amber">Demo mode: this check is a placeholder.</p>
+            )}
           </div>
         </div>
       </section>

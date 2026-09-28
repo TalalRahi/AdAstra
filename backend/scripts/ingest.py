@@ -13,6 +13,7 @@ An existing index is never overwritten unless you pass --rebuild
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -26,8 +27,11 @@ from adastra.rag.chunking import split_text
 from adastra.rag.store import Chunk
 
 WIKI_API = "https://en.wikipedia.org/w/api.php"
-# Wikipedia asks scripts to say who they are; put your own email here.
-HEADERS = {"User-Agent": "AdAstra-thesis/0.1 (CSE 400 student project; talalrahi123456@gmail.com)"}
+# Wikipedia asks scripts to say who they are. Put your contact in backend/.env:
+#     WIKIPEDIA_CONTACT=you@example.com
+# (kept out of the code so it isn't published with the repository)
+CONTACT = os.getenv("WIKIPEDIA_CONTACT", "no contact given")
+HEADERS = {"User-Agent": f"AdAstra-thesis/0.1 (CSE 400 student project; {CONTACT})"}
 CACHE_DIR = settings.knowledge_dir.parent / "wikipedia_cache"  # downloaded articles
 SKIP_SECTIONS = {"see also", "references", "external links", "further reading",
                  "notes", "bibliography", "sources", "citations", "footnotes"}
